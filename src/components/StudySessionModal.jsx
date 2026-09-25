@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
-import { X, CheckCircle2, XCircle, ArrowRight, RotateCcw, Award, Star, HelpCircle, Check } from 'lucide-react';
+import { X, CheckCircle2, XCircle, ArrowRight, RotateCcw, Award, Star, HelpCircle, Check, Keyboard } from 'lucide-react';
 import { recordQuestionResult, recordModuleCompletion } from '../utils/storageManager';
+import { isFlexibleMatch } from '../utils/questionGenerator';
 
 export default function StudySessionModal({ moduleId, questions, onClose, onRefreshData }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState(null);
+  const [typedAnswer, setTypedAnswer] = useState('');
   const [isChecked, setIsChecked] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   
@@ -49,10 +51,11 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
 
     if (currentQ.type === 'multiple-choice') {
       correct = selectedOption === currentQ.correctAnswer;
+    } else if (currentQ.type === 'type-in') {
+      correct = isFlexibleMatch(typedAnswer, currentQ.correctAnswer);
     } else if (currentQ.type === 'true-false') {
       correct = selectedOption === currentQ.isTrue;
     } else if (currentQ.type === 'matching') {
-      // Checked dynamically as pairs are clicked
       correct = Object.keys(matchedPairs).length === currentQ.pairs.length;
     }
 
@@ -61,13 +64,13 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
 
     if (correct) {
       setCorrectCount(prev => prev + 1);
-      setTotalXpEarned(prev => prev + 15);
+      setTotalXpEarned(prev => prev + 20);
     } else {
       setTotalXpEarned(prev => prev + 5);
     }
 
     // Record result in storage
-    recordQuestionResult(currentQ.muscleId, correct, 15);
+    recordQuestionResult(currentQ.muscleId, correct, 20);
   };
 
   // Handle Active Recall Self-Assessment
@@ -87,6 +90,7 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
   const handleNextQuestion = () => {
     setIsChecked(false);
     setSelectedOption(null);
+    setTypedAnswer('');
     setSelectedLeft(null);
     setMatchedPairs({});
     setIsAnswerRevealed(false);
@@ -123,7 +127,6 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
         recordQuestionResult(null, true, 20);
       }
     } else {
-      // wrong pair highlight reset
       setSelectedLeft(null);
     }
   };
@@ -168,8 +171,12 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
             <div>
               {/* Category Badge */}
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-800 text-slate-300 text-xs font-bold mb-4 border border-slate-700">
-                <HelpCircle size={14} className="text-emerald-400" />
-                <span>{currentQ.category}</span>
+                {currentQ.type === 'type-in' ? (
+                  <Keyboard size={14} className="text-cyan-400" />
+                ) : (
+                  <HelpCircle size={14} className="text-emerald-400" />
+                )}
+                <span>{currentQ.category} {currentQ.type === 'type-in' && '(Ruční vypisování)'}</span>
               </div>
 
               {/* Question Title & Highlight Text */}
@@ -180,6 +187,31 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
               {currentQ.highlightText && (
                 <div className="text-xl md:text-2xl font-black text-emerald-400 mb-6 tracking-tight bg-slate-950/60 p-3.5 rounded-xl border border-slate-800 text-center">
                   {currentQ.highlightText}
+                </div>
+              )}
+
+              {/* Exercise Type 0: Type-in (Ruční vypisování textu) */}
+              {currentQ.type === 'type-in' && (
+                <div className="mb-6 space-y-3">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      disabled={isChecked}
+                      placeholder={currentQ.placeholder || 'Napiš odpověď...'}
+                      value={typedAnswer}
+                      onChange={(e) => setTypedAnswer(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && typedAnswer.trim() && !isChecked) {
+                          handleCheckAnswer();
+                        }
+                      }}
+                      className="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 text-white font-semibold text-base outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all placeholder:text-slate-600"
+                      autoFocus
+                    />
+                  </div>
+                  <p className="text-xs text-slate-400 italic">
+                    💡 Malá a velká písmena ani háčky/čárky se nerozlišují. Stiskni Enter nebo tlačítko Zkontrolovat.
+                  </p>
                 </div>
               )}
 
@@ -251,7 +283,6 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
               {/* Exercise Type 3: Matching Pairs */}
               {currentQ.type === 'matching' && (
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                  {/* Left Column (Czech) */}
                   <div className="space-y-2">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Česky</div>
                     {currentQ.pairs.map(pair => {
@@ -276,7 +307,6 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
                     })}
                   </div>
 
-                  {/* Right Column (Latin) */}
                   <div className="space-y-2">
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Latinsky</div>
                     {currentQ.pairs.map(pair => {
@@ -401,12 +431,16 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
             </div>
           )}
 
-          {/* Bottom Action Footer for Standard Questions */}
+          {/* Bottom Action Footer for Standard & Type-in Questions */}
           {!isCompleted && currentQ.type !== 'active-recall' && (
             <div>
               {!isChecked ? (
                 <button
-                  disabled={selectedOption === null && currentQ.type !== 'matching'}
+                  disabled={
+                    (currentQ.type === 'multiple-choice' && selectedOption === null) ||
+                    (currentQ.type === 'type-in' && !typedAnswer.trim()) ||
+                    (currentQ.type === 'true-false' && selectedOption === null)
+                  }
                   onClick={handleCheckAnswer}
                   className="btn btn-primary w-full py-3.5 text-base shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -426,9 +460,14 @@ export default function StudySessionModal({ moduleId, questions, onClose, onRefr
                     )}
                     <div>
                       <div className="font-bold text-base">
-                        {isCorrect ? 'Skvělá práce! Správně!' : 'Chyba podle skript!'}
+                        {isCorrect ? 'Skvělá práce! Přesně tak!' : 'Neshoduje se se skripty!'}
                       </div>
                       <div className="text-xs leading-relaxed mt-1 opacity-90">
+                        {currentQ.type === 'type-in' && !isCorrect && (
+                          <div className="font-bold text-white mb-1">
+                            Správná odpoveď ze skript: <span className="text-emerald-300">{currentQ.correctAnswer}</span>
+                          </div>
+                        )}
                         {currentQ.explanation}
                       </div>
                       {currentQ.unusualFormulation && (

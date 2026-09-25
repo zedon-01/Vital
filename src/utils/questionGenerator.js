@@ -10,29 +10,82 @@ export function shuffleArray(array) {
   return arr;
 }
 
+// Normalize text for flexible fuzzy checking (ignores accents, case, m./mm. prefixes)
+export function normalizeText(str) {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // strip diacritics
+    .replace(/^m\.\s*/, '')
+    .replace(/^mm\.\s*/, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .trim();
+}
+
+// Check if user answer matches target text loosely or closely
+export function isFlexibleMatch(userAnswer, targetAnswer) {
+  const normUser = normalizeText(userAnswer);
+  const normTarget = normalizeText(targetAnswer);
+
+  if (!normUser || !normTarget) return false;
+  if (normUser === normTarget) return true;
+
+  // Check substring matches for key anatomical terms
+  if (normTarget.length > 3 && (normUser.includes(normTarget) || normTarget.includes(normUser))) {
+    return true;
+  }
+
+  return false;
+}
+
 // Generate session questions for a specific module or review mode
-export function generateModuleQuestions(moduleId, count = 7) {
+export function generateModuleQuestions(moduleId, count = 8) {
   let questions = [];
 
   if (moduleId === 'mod-1') {
-    // Terminology & Bones & Basic concepts
     questions = generateModule1Questions();
   } else if (moduleId === 'mod-13') {
-    // HSS
     questions = generateHSSQuestions();
   } else if (moduleId === 'mod-14') {
-    // Tonic / Phasic
     questions = generateTonicPhasicQuestions();
   } else if (moduleId === 'mod-15') {
-    // Exam mode
     questions = generateExamQuestions();
   } else {
-    // Muscle-based modules
     const moduleMuscles = MUSCLES.filter(m => m.module === moduleId);
     const otherMuscles = MUSCLES.filter(m => m.module !== moduleId);
     
     moduleMuscles.forEach(muscle => {
-      // 1. Origo question
+      // 1. Type-in Question (Manual Typing Latin name)
+      questions.push({
+        id: `q-typein-lat-${muscle.id}`,
+        type: 'type-in',
+        category: muscle.system,
+        title: `Napiš (vypiš) přesný latinský název pro sval:`,
+        highlightText: `${muscle.cz}`,
+        placeholder: 'Napiš latinský název (např. Biceps brachii)...',
+        correctAnswer: muscle.lat,
+        explanation: `${muscle.cz} = ${muscle.lat}`,
+        examNotes: muscle.examNotes,
+        unusualFormulation: muscle.unusualFormulation,
+        muscleId: muscle.id
+      });
+
+      // 2. Type-in Question (Manual Typing Czech name)
+      questions.push({
+        id: `q-typein-cz-${muscle.id}`,
+        type: 'type-in',
+        category: muscle.system,
+        title: `Napiš (vypiš) český název pro latinský sval:`,
+        highlightText: `${muscle.lat}`,
+        placeholder: 'Napiš český název (např. dvojhlavý sval pažní)...',
+        correctAnswer: muscle.cz,
+        explanation: `${muscle.lat} = ${muscle.cz}`,
+        examNotes: muscle.examNotes,
+        unusualFormulation: muscle.unusualFormulation,
+        muscleId: muscle.id
+      });
+
+      // 3. Origo question
       const wrongOrigos = shuffleArray(
         [...otherMuscles, ...moduleMuscles.filter(m => m.id !== muscle.id)]
       ).slice(0, 3).map(m => m.origo);
@@ -51,7 +104,7 @@ export function generateModuleQuestions(moduleId, count = 7) {
         muscleId: muscle.id
       });
 
-      // 2. Insertio question
+      // 4. Insertio question
       const wrongInsertios = shuffleArray(
         [...otherMuscles, ...moduleMuscles.filter(m => m.id !== muscle.id)]
       ).slice(0, 3).map(m => m.insertio);
@@ -70,7 +123,7 @@ export function generateModuleQuestions(moduleId, count = 7) {
         muscleId: muscle.id
       });
 
-      // 3. Function question
+      // 5. Function question
       const wrongFuncs = shuffleArray(
         [...otherMuscles, ...moduleMuscles.filter(m => m.id !== muscle.id)]
       ).slice(0, 3).map(m => m.function);
@@ -89,26 +142,7 @@ export function generateModuleQuestions(moduleId, count = 7) {
         muscleId: muscle.id
       });
 
-      // 4. Latin Name matching / MC
-      const wrongLatins = shuffleArray(
-        [...otherMuscles, ...moduleMuscles.filter(m => m.id !== muscle.id)]
-      ).slice(0, 3).map(m => m.lat);
-
-      questions.push({
-        id: `q-lat-${muscle.id}`,
-        type: 'multiple-choice',
-        category: muscle.system,
-        title: `Jaký je latinský název pro český sval:`,
-        highlightText: `${muscle.cz}`,
-        options: shuffleArray([muscle.lat, ...wrongLatins]),
-        correctAnswer: muscle.lat,
-        explanation: `${muscle.cz} = ${muscle.lat}`,
-        examNotes: muscle.examNotes,
-        unusualFormulation: muscle.unusualFormulation,
-        muscleId: muscle.id
-      });
-
-      // 5. Active recall card
+      // 6. Active recall card
       questions.push({
         id: `q-recall-${muscle.id}`,
         type: 'active-recall',
@@ -122,20 +156,6 @@ export function generateModuleQuestions(moduleId, count = 7) {
         unusualFormulation: muscle.unusualFormulation,
         muscleId: muscle.id
       });
-
-      // 6. True/False question if exam note or unusual formulation exists
-      if (muscle.examNotes) {
-        questions.push({
-          id: `q-tf-${muscle.id}`,
-          type: 'true-false',
-          category: muscle.system,
-          title: `Posouzení zkouškového faktu:`,
-          statement: `${muscle.lat}: ${muscle.examNotes.replace('KE ZKOUŠCE: ', '')}`,
-          isTrue: true,
-          explanation: muscle.examNotes,
-          muscleId: muscle.id
-        });
-      }
     });
 
     // Add Czech <-> Latin matching question for module
@@ -165,6 +185,18 @@ function generateModule1Questions() {
   const questions = [];
 
   TERMINOLOGY.forEach(t => {
+    // Type-in term question
+    questions.push({
+      id: `q-typein-term-${t.term}`,
+      type: 'type-in',
+      category: 'Základy terminologie',
+      title: `Vypiš ručně význám pojmu/zkratky:`,
+      highlightText: t.term,
+      placeholder: 'Vypiš význam zkratky...',
+      correctAnswer: t.meaning,
+      explanation: `${t.term} = ${t.meaning}`
+    });
+
     const wrong = shuffleArray(TERMINOLOGY.filter(item => item.term !== t.term)).slice(0, 3).map(item => item.meaning);
     questions.push({
       id: `q-term-${t.term}`,
@@ -179,6 +211,18 @@ function generateModule1Questions() {
   });
 
   BONES_AND_LANDMARKS.forEach(b => {
+    // Type-in bone name
+    questions.push({
+      id: `q-typein-bone-${b.lat}`,
+      type: 'type-in',
+      category: 'Základní kosti',
+      title: `Napiš český název pro latinskou kost:`,
+      highlightText: b.lat,
+      placeholder: 'Napiš český název (např. klíční kost)...',
+      correctAnswer: b.cz,
+      explanation: `${b.lat} = ${b.cz}`
+    });
+
     const wrong = shuffleArray(BONES_AND_LANDMARKS.filter(item => item.lat !== b.lat)).slice(0, 3).map(item => item.cz);
     questions.push({
       id: `q-bone-${b.lat}`,
@@ -192,26 +236,22 @@ function generateModule1Questions() {
     });
   });
 
-  FUNCTIONAL_TERMS.forEach(ft => {
-    const wrong = shuffleArray(FUNCTIONAL_TERMS.filter(item => item.term !== ft.term)).slice(0, 3).map(item => item.definition);
-    questions.push({
-      id: `q-functerm-${ft.term}`,
-      type: 'multiple-choice',
-      category: 'Funkční anatomie',
-      title: `Co znamená pojem:`,
-      highlightText: ft.term,
-      options: shuffleArray([ft.definition, ...wrong]),
-      correctAnswer: ft.definition,
-      explanation: `${ft.term}: ${ft.definition}. Příp.: ${ft.example}`
-    });
-  });
-
   return shuffleArray(questions);
 }
 
 // Questions for Module 13 (HSS)
 function generateHSSQuestions() {
   return [
+    {
+      id: 'q-hss-typein',
+      type: 'type-in',
+      category: 'HSS',
+      title: 'Vypiš alespoň 2 ze 4 složek HSS (bránice, transversus, multifidi, pánevní dno):',
+      highlightText: 'Složky HSS',
+      placeholder: 'Vypiš složky HSS...',
+      correctAnswer: 'Bránice, M. transversus abdominis, Mm. multifidi, Svaly pánevního dna',
+      explanation: 'KE ZKOUŠCE: 1) Bránice, 2) M. transversus abdominis, 3) Mm. multifidi, 4) Svaly pánevního dna.'
+    },
     {
       id: 'q-hss-all',
       type: 'multiple-choice',
@@ -226,28 +266,13 @@ function generateHSSQuestions() {
       ]),
       correctAnswer: 'Bránice, M. transversus abdominis, Mm. multifidi, Svaly pánevního dna',
       explanation: 'KE ZKOUŠCE: Složení HSS tvoří přesně 4 složky: 1) Bránice, 2) M. transversus abdominis, 3) Mm. multifidi, 4) Svaly pánevního dna.'
-    },
-    ...HSS_COMPONENTS.map(c => ({
-      id: `q-hss-${c.id}`,
-      type: 'multiple-choice',
-      category: 'HSS',
-      title: `Jaká je funkce složky HSS:`,
-      highlightText: `${c.name} (${c.lat})`,
-      options: shuffleArray([
-        c.role,
-        'Flexe v kolenním kloubu a extenze v kyčli.',
-        'Extenze v loketním kloubu a addukce ramene.',
-        'Abdukce ramene do 90 stupňů.'
-      ]),
-      correctAnswer: c.role,
-      explanation: `${c.name} (${c.lat}): ${c.role}`
-    }))
+    }
   ];
 }
 
 // Questions for Module 14 (Tonic vs Phasic)
 function generateTonicPhasicQuestions() {
-  const questions = [
+  return shuffleArray([
     {
       id: 'q-tp-def-tonic',
       type: 'multiple-choice',
@@ -277,34 +302,8 @@ function generateTonicPhasicQuestions() {
       ]),
       correctAnswer: 'Převaha rychlých vláken; rychleji se unaví; tendence k oslabení.',
       explanation: TONIC_PHASIC_DATA.phasic.properties
-    },
-    {
-      id: 'q-tp-tf-dysbalance',
-      type: 'true-false',
-      category: 'Svalový tonus',
-      title: 'Svalové nerovnováhy:',
-      statement: 'Špatná distribuce svalového tonu vede ke svalové nerovnováze (typické příklady skript: horní a dolní zkřížený syndrom).',
-      isTrue: true,
-      explanation: TONIC_PHASIC_DATA.dysbalanceNote
     }
-  ];
-
-  // Specific muscle classification questions
-  MUSCLES.filter(m => m.tonicPhasic && m.tonicPhasic !== 'both').slice(0, 6).forEach(m => {
-    const isTonic = m.tonicPhasic === 'tonic';
-    questions.push({
-      id: `q-tp-${m.id}`,
-      type: 'multiple-choice',
-      category: 'Svalový tonus',
-      title: `Do které skupiny patří sval:`,
-      highlightText: `${m.cz} (${m.lat})`,
-      options: ['Tonické (posturální) - tendence ke zkrácení', 'Fázické (hybné) - tendence k oslabení'],
-      correctAnswer: isTonic ? 'Tonické (posturální) - tendence ke zkrácení' : 'Fázické (hybné) - tendence k oslabení',
-      explanation: `${m.cz} (${m.lat}) je podle skript zařazen mezi svaly ${isTonic ? 'tonické (posturální)' : 'fázické (hybné)'}.`
-    });
-  });
-
-  return shuffleArray(questions);
+  ]);
 }
 
 // Generate Questions for Exam Mode A1-A21
@@ -331,12 +330,10 @@ export function generateExamQuestions() {
 // Generate weak topic review session
 export function generateWeakTopicsSession(weakIds = []) {
   if (!weakIds || weakIds.length === 0) {
-    // Default fallback to random questions across all modules
     return shuffleArray([
-      ...generateModuleQuestions('mod-2', 2),
-      ...generateModuleQuestions('mod-4', 2),
-      ...generateModuleQuestions('mod-5', 2),
-      ...generateModuleQuestions('mod-10', 2)
+      ...generateModuleQuestions('mod-2', 3),
+      ...generateModuleQuestions('mod-4', 3),
+      ...generateModuleQuestions('mod-5', 3)
     ]);
   }
 
@@ -344,6 +341,18 @@ export function generateWeakTopicsSession(weakIds = []) {
   weakIds.forEach(id => {
     const muscle = MUSCLES.find(m => m.id === id);
     if (muscle) {
+      // Type-in manual recall for weak muscle
+      questions.push({
+        id: `q-weak-typein-${muscle.id}`,
+        type: 'type-in',
+        category: 'Opakování slabých míst',
+        title: `[Slabé místo - Ruční vypisování] Napiš latinský název:`,
+        highlightText: `${muscle.cz}`,
+        placeholder: 'Napiš latinský název...',
+        correctAnswer: muscle.lat,
+        explanation: `${muscle.cz} = ${muscle.lat}`,
+        muscleId: muscle.id
+      });
       questions.push({
         id: `q-weak-origo-${muscle.id}`,
         type: 'multiple-choice',
@@ -356,20 +365,6 @@ export function generateWeakTopicsSession(weakIds = []) {
         ]),
         correctAnswer: muscle.origo,
         explanation: `Začátek ${muscle.lat}: ${muscle.origo}`,
-        muscleId: muscle.id
-      });
-      questions.push({
-        id: `q-weak-ins-${muscle.id}`,
-        type: 'multiple-choice',
-        category: 'Opakování slabých míst',
-        title: `[Slabé místo] Úpon (insertio) svalu:`,
-        highlightText: `${muscle.cz} (${muscle.lat})`,
-        options: shuffleArray([
-          muscle.insertio,
-          ...shuffleArray(MUSCLES.filter(m => m.id !== muscle.id)).slice(0, 3).map(m => m.insertio)
-        ]),
-        correctAnswer: muscle.insertio,
-        explanation: `Úpon ${muscle.lat}: ${muscle.insertio}`,
         muscleId: muscle.id
       });
     }
