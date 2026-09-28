@@ -10,28 +10,81 @@ export function shuffleArray(array) {
   return arr;
 }
 
-// Normalize text for flexible fuzzy checking (ignores accents, case, m./mm. prefixes)
+// Normalize text for flexible fuzzy checking (ignores accents, case, m./mm. prefixes, extra spaces)
 export function normalizeText(str) {
   if (!str) return '';
   return str
     .toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // strip diacritics
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // strip diacritics/accents
     .replace(/^m\.\s*/, '')
     .replace(/^mm\.\s*/, '')
-    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim();
 }
 
-// Check if user answer matches target text loosely or closely
+// Compute Levenshtein distance for typo tolerance
+export function getLevenshteinDistance(a, b) {
+  if (!a) return b ? b.length : 0;
+  if (!b) return a.length;
+
+  const matrix = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          Math.min(
+            matrix[i][j - 1] + 1,   // insertion
+            matrix[i - 1][j] + 1    // deletion
+          )
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+// Check if user answer matches target text safely with typo tolerance
 export function isFlexibleMatch(userAnswer, targetAnswer) {
   const normUser = normalizeText(userAnswer);
   const normTarget = normalizeText(targetAnswer);
 
   if (!normUser || !normTarget) return false;
+
+  // 1. Exact match after normalization
   if (normUser === normTarget) return true;
 
-  // Check substring matches for key anatomical terms
-  if (normTarget.length > 3 && (normUser.includes(normTarget) || normTarget.includes(normUser))) {
+  // 2. Strict length guard: user answer must be at least 40% of target length
+  // Prevent single letters like "a" or short strings from matching long words
+  if (normUser.length < Math.min(3, Math.floor(normTarget.length * 0.4))) {
+    return false;
+  }
+
+  // 3. User phrase contains full target or vice versa (only if length is close enough)
+  if (normUser.length >= Math.floor(normTarget.length * 0.7)) {
+    if (normUser.includes(normTarget) || (normTarget.includes(normUser) && normUser.length >= normTarget.length - 3)) {
+      return true;
+    }
+  }
+
+  // 4. Levenshtein Distance for minor typos (e.g. "lattisimus dorsi" vs "latissimus dorsi")
+  const distance = getLevenshteinDistance(normUser, normTarget);
+  const allowedTypos = normTarget.length >= 12 ? 3 : normTarget.length >= 6 ? 2 : 1;
+
+  if (distance <= allowedTypos) {
     return true;
   }
 
@@ -185,7 +238,6 @@ function generateModule1Questions() {
   const questions = [];
 
   TERMINOLOGY.forEach(t => {
-    // Type-in term question
     questions.push({
       id: `q-typein-term-${t.term}`,
       type: 'type-in',
@@ -211,7 +263,6 @@ function generateModule1Questions() {
   });
 
   BONES_AND_LANDMARKS.forEach(b => {
-    // Type-in bone name
     questions.push({
       id: `q-typein-bone-${b.lat}`,
       type: 'type-in',
@@ -341,7 +392,6 @@ export function generateWeakTopicsSession(weakIds = []) {
   weakIds.forEach(id => {
     const muscle = MUSCLES.find(m => m.id === id);
     if (muscle) {
-      // Type-in manual recall for weak muscle
       questions.push({
         id: `q-weak-typein-${muscle.id}`,
         type: 'type-in',
