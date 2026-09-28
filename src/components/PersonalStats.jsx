@@ -4,6 +4,7 @@ import { BarChart3, Target, Award, Shield, CheckCircle2, AlertTriangle, Trending
 
 export default function PersonalStats({ userData }) {
   const mastered = userData.masteredMuscles || {};
+  const completed = userData.completedModules || {};
   const entries = Object.entries(mastered);
   
   let totalCorrect = 0;
@@ -64,6 +65,7 @@ export default function PersonalStats({ userData }) {
         <div className="space-y-4">
           {MODULES.map(mod => {
             const modMuscles = MUSCLES.filter(m => m.module === mod.id);
+            const isCompleted = completed[mod.id]?.stars > 0;
             let modCorr = 0;
             let modTot = 0;
 
@@ -80,8 +82,22 @@ export default function PersonalStats({ userData }) {
             return (
               <div key={mod.id} className="space-y-1">
                 <div className="flex justify-between text-xs font-semibold text-slate-300">
-                  <span>{mod.number}. {mod.title}</span>
-                  <span className="font-extrabold text-emerald-400">{percent}% ({modCorr}/{modTot})</span>
+                  <div className="flex items-center gap-2">
+                    <span>{mod.number}. {mod.title}</span>
+                    {isCompleted ? (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        Lekce splněna ✓
+                      </span>
+                    ) : modTot === 0 ? (
+                      <span className="text-[10px] font-bold text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
+                        Zatím nehráno
+                      </span>
+                    ) : null}
+                  </div>
+                  
+                  <span className={`font-extrabold ${modTot > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    {modTot > 0 ? `${percent}% (${modCorr}/${modTot})` : '0% (0/0)'}
+                  </span>
                 </div>
                 <div className="duo-progress-container h-2.5">
                   <div className="duo-progress-fill" style={{ width: `${percent}%` }}></div>

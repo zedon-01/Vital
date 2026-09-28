@@ -288,7 +288,7 @@ export default function XPShop({ userData, onRefreshData }) {
                 className={`p-4 rounded-2xl border transition-all flex flex-col justify-between gap-3 ${
                   isUnlocked
                     ? 'bg-slate-900/90 border-emerald-500/40 shadow-md'
-                    : 'bg-slate-950/40 border-slate-800 opacity-80'
+                    : 'bg-slate-950/40 border-slate-800 opacity-60'
                 }`}
               >
                 <div className="flex items-start gap-4">
@@ -299,9 +299,14 @@ export default function XPShop({ userData, onRefreshData }) {
                   <div className="flex-1">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <h3 className="font-extrabold text-white text-sm">{b.name}</h3>
-                      {isUnlocked && (
+                      {isUnlocked ? (
                         <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
                           Odemčeno ✓
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800 flex items-center gap-1">
+                          <Lock size={10} />
+                          Neodemčeno
                         </span>
                       )}
                     </div>
@@ -310,13 +315,19 @@ export default function XPShop({ userData, onRefreshData }) {
                 </div>
 
                 <div className="pt-2 border-t border-slate-900 flex justify-end">
-                  <button
-                    onClick={() => setPreviewBadgeModal(b)}
-                    className="btn btn-secondary text-[11px] py-1.5 px-3 font-bold text-amber-400 hover:text-amber-300"
-                  >
-                    <Sparkles size={14} />
-                    <span>Otestovat animaci odemknutí 🎉</span>
-                  </button>
+                  {isUnlocked ? (
+                    <button
+                      onClick={() => setPreviewBadgeModal(b)}
+                      className="btn btn-secondary text-[11px] py-1.5 px-3 font-bold text-amber-400 hover:text-amber-300"
+                    >
+                      <Sparkles size={14} />
+                      <span>Zobrazit odznak 🎉</span>
+                    </button>
+                  ) : (
+                    <span className="text-[11px] font-semibold text-slate-600 italic">
+                      Vynecháno testování (odznak uzamčen)
+                    </span>
+                  )}
                 </div>
               </div>
             );
