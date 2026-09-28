@@ -65,19 +65,22 @@ export default function PersonalStats({ userData }) {
         <div className="space-y-4">
           {MODULES.map(mod => {
             const modMuscles = MUSCLES.filter(m => m.module === mod.id);
-            const isCompleted = completed[mod.id]?.stars > 0;
+            const isCompleted = Boolean(completed[mod.id] && completed[mod.id].stars > 0);
+            
+            let percent = 0;
             let modCorr = 0;
             let modTot = 0;
 
-            modMuscles.forEach(m => {
-              const d = mastered[m.id];
-              if (d) {
-                modCorr += d.correct || 0;
-                modTot += d.total || 0;
-              }
-            });
-
-            const percent = modTot > 0 ? Math.round((modCorr / modTot) * 100) : 0;
+            if (isCompleted) {
+              modMuscles.forEach(m => {
+                const d = mastered[m.id];
+                if (d) {
+                  modCorr += d.correct || 0;
+                  modTot += d.total || 0;
+                }
+              });
+              percent = modTot > 0 ? Math.round((modCorr / modTot) * 100) : (completed[mod.id]?.bestAccuracy || 100);
+            }
 
             return (
               <div key={mod.id} className="space-y-1">
@@ -88,15 +91,15 @@ export default function PersonalStats({ userData }) {
                       <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
                         Lekce splněna ✓
                       </span>
-                    ) : modTot === 0 ? (
+                    ) : (
                       <span className="text-[10px] font-bold text-slate-500 bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
-                        Zatím nehráno
+                        Zatím nedokončeno
                       </span>
-                    ) : null}
+                    )}
                   </div>
                   
-                  <span className={`font-extrabold ${modTot > 0 ? 'text-emerald-400' : 'text-slate-500'}`}>
-                    {modTot > 0 ? `${percent}% (${modCorr}/${modTot})` : '0% (0/0)'}
+                  <span className={`font-extrabold ${isCompleted ? 'text-emerald-400' : 'text-slate-500'}`}>
+                    {isCompleted ? `${percent}% ${modTot > 0 ? `(${modCorr}/${modTot})` : ''}` : '0% (0/0)'}
                   </span>
                 </div>
                 <div className="duo-progress-container h-2.5">
