@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
 import LearningPath from './components/LearningPath';
+import BeginnerGuide from './components/BeginnerGuide';
 import BodyMapSelector from './components/BodyMapSelector';
 import MuscleAtlas from './components/MuscleAtlas';
 import MatchingGame from './components/MatchingGame';
 import ExamMode from './components/ExamMode';
 import WeakSpots from './components/WeakSpots';
+import XPShop from './components/XPShop';
+import PersonalStats from './components/PersonalStats';
 import FinalChecklist from './components/FinalChecklist';
 import StudySessionModal from './components/StudySessionModal';
 import SingleMuscleDrillModal from './components/SingleMuscleDrillModal';
@@ -18,10 +21,15 @@ export default function App() {
   const [userData, setUserData] = useState(() => loadUserData());
   
   // Active study session state
-  const [activeSession, setActiveSession] = useState(null); // { moduleId, questions }
+  const [activeSession, setActiveSession] = useState(null);
 
   // Single muscle drill modal state
   const [selectedMuscleForDrill, setSelectedMuscleForDrill] = useState(null);
+
+  // Dynamic Theme Switcher Effect
+  useEffect(() => {
+    document.body.className = `theme-${userData.activeTheme || 'emerald'}`;
+  }, [userData.activeTheme]);
 
   const refreshUserData = () => {
     setUserData(loadUserData());
@@ -71,6 +79,12 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'beginner' && (
+          <BeginnerGuide
+            onRefreshData={refreshUserData}
+          />
+        )}
+
         {activeTab === 'bodymap' && (
           <BodyMapSelector
             onSelectMuscle={handleSelectMuscle}
@@ -102,6 +116,19 @@ export default function App() {
           <WeakSpots
             userData={userData}
             onStartWeakSession={handleStartWeakSession}
+          />
+        )}
+
+        {activeTab === 'shop' && (
+          <XPShop
+            userData={userData}
+            onRefreshData={refreshUserData}
+          />
+        )}
+
+        {activeTab === 'stats' && (
+          <PersonalStats
+            userData={userData}
           />
         )}
 

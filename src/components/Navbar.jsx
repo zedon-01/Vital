@@ -1,15 +1,18 @@
 import React from 'react';
-import { Flame, Award, BookOpen, Layers, CheckSquare, Target, AlertTriangle, Activity, Zap } from 'lucide-react';
+import { Flame, Award, BookOpen, Layers, CheckSquare, Target, AlertTriangle, Activity, Zap, GraduationCap, ShoppingBag, BarChart3 } from 'lucide-react';
 
 export default function Navbar({ activeTab, setActiveTab, userData }) {
   const navItems = [
     { id: 'path', label: 'Učební mapa', icon: BookOpen },
+    { id: 'beginner', label: 'Pro nováčky', icon: GraduationCap },
     { id: 'bodymap', label: 'Mapa těla', icon: Activity },
     { id: 'atlas', label: 'Anatomický atlas', icon: Layers },
     { id: 'matching', label: 'Rychlá spojovačka', icon: Zap },
     { id: 'exam', label: 'Test A1–A21', icon: Award },
     { id: 'weak', label: 'Slabá místa', icon: AlertTriangle, count: userData?.weakTopics?.length || 0 },
-    { id: 'checklist', label: 'Kontrolní checklist', icon: CheckSquare }
+    { id: 'shop', label: 'XP Obchůdek', icon: ShoppingBag },
+    { id: 'stats', label: 'Statistiky', icon: BarChart3 },
+    { id: 'checklist', label: 'Checklist', icon: CheckSquare }
   ];
 
   return (
@@ -40,7 +43,7 @@ export default function Navbar({ activeTab, setActiveTab, userData }) {
               <button
                 key={item.id}
                 onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all whitespace-nowrap ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs md:text-sm font-semibold transition-all whitespace-nowrap ${
                   isActive
                     ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-sm'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
