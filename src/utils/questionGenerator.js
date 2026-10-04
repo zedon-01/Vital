@@ -91,6 +91,50 @@ export function isFlexibleMatch(userAnswer, targetAnswer) {
   return false;
 }
 
+// Smart distractor generator for muscle properties (origo, insertio, function)
+// Prioritizes muscles from the same module (same body region & landmarks),
+// then same system, then other muscles. Ensures uniqueness and non-equality to correct answer.
+export function getSmartMuscleDistractors(muscle, field, count = 3) {
+  const correctAnswer = muscle[field];
+  const uniqueDistractors = new Set();
+
+  // 1. Same module muscles (highest priority, anatomically closest)
+  const sameModuleMuscles = MUSCLES.filter(m => m.module === muscle.module && m.id !== muscle.id);
+  for (const m of shuffleArray(sameModuleMuscles)) {
+    const val = m[field];
+    if (val && val !== correctAnswer) {
+      uniqueDistractors.add(val);
+      if (uniqueDistractors.size >= count) break;
+    }
+  }
+
+  // 2. Same system / body region muscles
+  if (uniqueDistractors.size < count) {
+    const sameSystemMuscles = MUSCLES.filter(m => m.system === muscle.system && m.id !== muscle.id);
+    for (const m of shuffleArray(sameSystemMuscles)) {
+      const val = m[field];
+      if (val && val !== correctAnswer) {
+        uniqueDistractors.add(val);
+        if (uniqueDistractors.size >= count) break;
+      }
+    }
+  }
+
+  // 3. Fallback: all other muscles
+  if (uniqueDistractors.size < count) {
+    const otherMuscles = MUSCLES.filter(m => m.id !== muscle.id);
+    for (const m of shuffleArray(otherMuscles)) {
+      const val = m[field];
+      if (val && val !== correctAnswer) {
+        uniqueDistractors.add(val);
+        if (uniqueDistractors.size >= count) break;
+      }
+    }
+  }
+
+  return Array.from(uniqueDistractors).slice(0, count);
+}
+
 // Generate session questions for a specific module or review mode
 export function generateModuleQuestions(moduleId, count = 8) {
   let questions = [];
@@ -105,7 +149,6 @@ export function generateModuleQuestions(moduleId, count = 8) {
     questions = generateExamQuestions();
   } else {
     const moduleMuscles = MUSCLES.filter(m => m.module === moduleId);
-    const otherMuscles = MUSCLES.filter(m => m.module !== moduleId);
     
     moduleMuscles.forEach(muscle => {
       // 1. Type-in Question (Manual Typing Latin name)
@@ -138,10 +181,8 @@ export function generateModuleQuestions(moduleId, count = 8) {
         muscleId: muscle.id
       });
 
-      // 3. Origo question
-      const wrongOrigos = shuffleArray(
-        [...otherMuscles, ...moduleMuscles.filter(m => m.id !== muscle.id)]
-      ).slice(0, 3).map(m => m.origo);
+      // 3. Origo question (smart distractors from same module/region)
+      const wrongOrigos = getSmartMuscleDistractors(muscle, 'origo', 3);
 
       questions.push({
         id: `q-origo-${muscle.id}`,
@@ -157,10 +198,8 @@ export function generateModuleQuestions(moduleId, count = 8) {
         muscleId: muscle.id
       });
 
-      // 4. Insertio question
-      const wrongInsertios = shuffleArray(
-        [...otherMuscles, ...moduleMuscles.filter(m => m.id !== muscle.id)]
-      ).slice(0, 3).map(m => m.insertio);
+      // 4. Insertio question (smart distractors from same module/region)
+      const wrongInsertios = getSmartMuscleDistractors(muscle, 'insertio', 3);
 
       questions.push({
         id: `q-ins-${muscle.id}`,
@@ -176,10 +215,8 @@ export function generateModuleQuestions(moduleId, count = 8) {
         muscleId: muscle.id
       });
 
-      // 5. Function question
-      const wrongFuncs = shuffleArray(
-        [...otherMuscles, ...moduleMuscles.filter(m => m.id !== muscle.id)]
-      ).slice(0, 3).map(m => m.function);
+      // 5. Function question (smart distractors from same module/region)
+      const wrongFuncs = getSmartMuscleDistractors(muscle, 'function', 3);
 
       questions.push({
         id: `q-func-${muscle.id}`,
@@ -233,6 +270,67 @@ export function generateModuleQuestions(moduleId, count = 8) {
   return shuffleArray(questions).slice(0, count);
 }
 
+// Smart distractors for terminology
+function getSmartTerminologyDistractors(targetTerm) {
+  const term = targetTerm.term;
+  const isDirection = ['proximálně', 'distálně', 'mediálně', 'laterálně', 'kraniálně', 'kaudálně', 'ventrálně', 'dorzálně'].includes(term);
+  const isMovement = ['flexe', 'extenze', 'abdukce', 'addukce', 'rotace', 'pronace', 'supinace'].includes(term);
+  const isVertebra = ['C1-C7', 'Th1-Th12', 'L1-L5'].includes(term);
+
+  const sameCat = TERMINOLOGY.filter(item => {
+    if (item.term === term) return false;
+    if (isDirection) return ['proximálně', 'distálně', 'mediálně', 'laterálně', 'kraniálně', 'kaudálně', 'ventrálně', 'dorzálně'].includes(item.term);
+    if (isMovement) return ['flexe', 'extenze', 'abdukce', 'addukce', 'rotace', 'pronace', 'supinace'].includes(item.term);
+    if (isVertebra) return ['C1-C7', 'Th1-Th12', 'L1-L5'].includes(item.term);
+    return true;
+  });
+
+  const unique = new Set();
+  for (const item of shuffleArray(sameCat)) {
+    if (item.meaning !== targetTerm.meaning) {
+      unique.add(item.meaning);
+      if (unique.size >= 3) break;
+    }
+  }
+
+  if (unique.size < 3) {
+    for (const item of shuffleArray(TERMINOLOGY.filter(i => i.term !== term))) {
+      unique.add(item.meaning);
+      if (unique.size >= 3) break;
+    }
+  }
+
+  return Array.from(unique).slice(0, 3);
+}
+
+// Smart distractors for bones and anatomical landmarks
+function getSmartBoneDistractors(targetBone) {
+  const isLandmark = targetBone.lat.includes('processus') || targetBone.lat.includes('trochanter') || targetBone.lat.includes('olecranon') || targetBone.lat.includes('linea') || targetBone.lat.includes('centrum') || targetBone.lat.includes('os ');
+  
+  const sameCategory = BONES_AND_LANDMARKS.filter(item => {
+    if (item.lat === targetBone.lat) return false;
+    const itemIsLandmark = item.lat.includes('processus') || item.lat.includes('trochanter') || item.lat.includes('olecranon') || item.lat.includes('linea') || item.lat.includes('centrum') || item.lat.includes('os ');
+    return isLandmark ? itemIsLandmark : !itemIsLandmark;
+  });
+
+  const unique = new Set();
+  for (const item of shuffleArray(sameCategory)) {
+    if (item.cz !== targetBone.cz) {
+      unique.add(item.cz);
+      if (unique.size >= 3) break;
+    }
+  }
+
+  if (unique.size < 3) {
+    for (const item of shuffleArray(BONES_AND_LANDMARKS.filter(i => i.lat !== targetBone.lat))) {
+      unique.add(item.cz);
+      if (unique.size >= 3) break;
+    }
+  }
+
+  return Array.from(unique).slice(0, 3);
+}
+
 // Questions for Module 1 (Terminology & Bones)
 function generateModule1Questions() {
   const questions = [];
@@ -249,7 +347,7 @@ function generateModule1Questions() {
       explanation: `${t.term} = ${t.meaning}`
     });
 
-    const wrong = shuffleArray(TERMINOLOGY.filter(item => item.term !== t.term)).slice(0, 3).map(item => item.meaning);
+    const wrong = getSmartTerminologyDistractors(t);
     questions.push({
       id: `q-term-${t.term}`,
       type: 'multiple-choice',
@@ -274,7 +372,7 @@ function generateModule1Questions() {
       explanation: `${b.lat} = ${b.cz}`
     });
 
-    const wrong = shuffleArray(BONES_AND_LANDMARKS.filter(item => item.lat !== b.lat)).slice(0, 3).map(item => item.cz);
+    const wrong = getSmartBoneDistractors(b);
     questions.push({
       id: `q-bone-${b.lat}`,
       type: 'multiple-choice',
@@ -411,7 +509,7 @@ export function generateWeakTopicsSession(weakIds = []) {
         highlightText: `${muscle.cz} (${muscle.lat})`,
         options: shuffleArray([
           muscle.origo,
-          ...shuffleArray(MUSCLES.filter(m => m.id !== muscle.id)).slice(0, 3).map(m => m.origo)
+          ...getSmartMuscleDistractors(muscle, 'origo', 3)
         ]),
         correctAnswer: muscle.origo,
         explanation: `Začátek ${muscle.lat}: ${muscle.origo}`,

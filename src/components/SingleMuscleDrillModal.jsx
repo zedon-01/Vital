@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X, Play, AlertTriangle, Eye, EyeOff, CheckCircle2, XCircle, RotateCcw, HelpCircle } from 'lucide-react';
 import { MUSCLES } from '../data/anatomyData';
 import { recordQuestionResult } from '../utils/storageManager';
-import { shuffleArray } from '../utils/questionGenerator';
+import { shuffleArray, getSmartMuscleDistractors } from '../utils/questionGenerator';
 
 export default function SingleMuscleDrillModal({ muscle, onClose, onRefreshData }) {
   const [activeTab, setActiveTab] = useState('card'); // 'card' | 'quiz'
@@ -259,10 +259,8 @@ export default function SingleMuscleDrillModal({ muscle, onClose, onRefreshData 
 
 // Helper generator for single muscle quiz
 function generateSingleMuscleQuiz(muscle) {
-  const otherMuscles = MUSCLES.filter(m => m.id !== muscle.id);
-
   // 1. Origo Q
-  const wrongOrigos = shuffleArray(otherMuscles).slice(0, 3).map(m => m.origo);
+  const wrongOrigos = getSmartMuscleDistractors(muscle, 'origo', 3);
   const q1 = {
     title: `Kde začíná (origo) ${muscle.cz} (${muscle.lat})?`,
     options: shuffleArray([muscle.origo, ...wrongOrigos]),
@@ -271,7 +269,7 @@ function generateSingleMuscleQuiz(muscle) {
   };
 
   // 2. Insertio Q
-  const wrongInsertios = shuffleArray(otherMuscles).slice(0, 3).map(m => m.insertio);
+  const wrongInsertios = getSmartMuscleDistractors(muscle, 'insertio', 3);
   const q2 = {
     title: `Kam se upíná (insertio) ${muscle.cz} (${muscle.lat})?`,
     options: shuffleArray([muscle.insertio, ...wrongInsertios]),
@@ -280,7 +278,7 @@ function generateSingleMuscleQuiz(muscle) {
   };
 
   // 3. Function Q
-  const wrongFuncs = shuffleArray(otherMuscles).slice(0, 3).map(m => m.function);
+  const wrongFuncs = getSmartMuscleDistractors(muscle, 'function', 3);
   const q3 = {
     title: `Jaká je funkce svalu ${muscle.cz} (${muscle.lat})?`,
     options: shuffleArray([muscle.function, ...wrongFuncs]),
