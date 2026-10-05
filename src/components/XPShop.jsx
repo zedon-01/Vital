@@ -1,7 +1,113 @@
 import React, { useState } from 'react';
-import { ShoppingBag, Flame, Award, Shield, Palette, CheckCircle2, Lock, Sparkles, Star, Dumbbell, Activity, Keyboard, Trophy, Play } from 'lucide-react';
+import { ShoppingBag, Flame, Award, Shield, Palette, CheckCircle2, Lock, Sparkles, Star, Dumbbell, Activity, Keyboard, Trophy, Play, Moon, Sun, Zap, Crown } from 'lucide-react';
 import { buyTheme, selectTheme, buyStreakFreeze, unlockBadge } from '../utils/storageManager';
 import BadgeUnlockModal from './BadgeUnlockModal';
+import { MODULES } from '../data/anatomyData';
+
+export const BADGES_LIST = [
+  {
+    id: 'b-night',
+    name: 'Noční Sova 🌙',
+    description: 'Dokonči lekci nebo studuj po 19:00 hodině večer.',
+    icon: Moon,
+    color: 'text-indigo-400',
+    req: (data) => new Date().getHours() >= 19
+  },
+  {
+    id: 'b-morning',
+    name: 'Ranní Ptáče ☀️',
+    description: 'Dokonči lekci nebo studuj do 10:00 ráno.',
+    icon: Sun,
+    color: 'text-amber-300',
+    req: (data) => new Date().getHours() < 10
+  },
+  {
+    id: 'b-streak-7',
+    name: 'Nezastavitelný ⚡',
+    description: 'Udržuj denní sérii alespoň 7 dní v řadě.',
+    icon: Zap,
+    color: 'text-yellow-400',
+    req: (data) => (data.streak || 0) >= 7
+  },
+  {
+    id: 'b-perfect',
+    name: 'Perfekcionista 💯',
+    description: 'Dokonči všech 15 anatomických modulů na 3 hvězdičky.',
+    icon: Crown,
+    color: 'text-emerald-400',
+    req: (data) => MODULES.every(m => data.completedModules?.[m.id]?.stars === 3)
+  },
+  {
+    id: 'b-streak-3',
+    name: 'Stálý Student',
+    description: 'Udržuj denní sérii alespoň 3 dny v řadě.',
+    icon: Flame,
+    color: 'text-amber-400',
+    req: (data) => (data.streak || 0) >= 3
+  },
+  {
+    id: 'b-xp-500',
+    name: 'XP Sběratel',
+    description: 'Získej celkově alespoň 500 XP bodů.',
+    icon: Star,
+    color: 'text-yellow-400',
+    req: (data) => (data.xp || 0) >= 500
+  },
+  {
+    id: 'b-rotator',
+    name: 'Mistr Rotátorové Manžety',
+    description: 'Zvládnuty svaly supraspinatus, infraspinatus, teres minor a subscapularis.',
+    icon: Shield,
+    color: 'text-emerald-400',
+    req: (data) => {
+      const rm = ['supraspinatus', 'infraspinatus', 'teres-minor', 'subscapularis'];
+      return rm.every(id => data.masteredMuscles?.[id]?.score >= 80);
+    }
+  },
+  {
+    id: 'b-exam-100',
+    name: 'Jedničkář A1–A21',
+    description: 'Získej 100 % v ostrém zkouškovém testu.',
+    icon: Award,
+    color: 'text-cyan-400',
+    req: (data) => data.examHistory?.some(h => h.percent === 100)
+  },
+  {
+    id: 'b-marathon',
+    name: 'Svalový Maratonist',
+    description: 'Zodpovězeno alespoň 20 anatomických otázek.',
+    icon: Dumbbell,
+    color: 'text-rose-400',
+    req: (data) => Object.values(data.masteredMuscles || {}).reduce((acc, m) => acc + (m.total || 0), 0) >= 20
+  },
+  {
+    id: 'b-cervical',
+    name: 'Mistr Šíje a Krku',
+    description: 'Zvládnuty svaly mm. suboccipitales, scaleni a SCM.',
+    icon: Activity,
+    color: 'text-purple-400',
+    req: (data) => {
+      const neck = ['rectus-capitis-posterior-minor', 'scalenus-anterior', 'sternocleidomastoideus'];
+      return neck.every(id => data.masteredMuscles?.[id]?.score >= 80);
+    }
+  },
+  {
+    id: 'b-exam-done',
+    name: 'Zkouškový Bojovník',
+    description: 'Dokonči alespoň 1 kompletní test A1–A21.',
+    icon: Trophy,
+    color: 'text-amber-500',
+    req: (data) => data.examHistory?.length > 0
+  },
+  {
+    id: 'b-typer-pro',
+    name: 'Mistr Klávesnice',
+    description: 'Správně zodpovězeny ruční vypisovací otázky v lekcích.',
+    icon: Keyboard,
+    color: 'text-teal-400',
+    req: (data) => (data.xp || 0) >= 300
+  }
+];
 
 export default function XPShop({ userData, onRefreshData }) {
   const [activeTab, setActiveTab] = useState('themes'); // 'themes' | 'freeze' | 'badges'
@@ -11,7 +117,7 @@ export default function XPShop({ userData, onRefreshData }) {
     {
       id: 'emerald',
       name: 'Emerald Obsidian',
-      description: 'Klasický tmavý smaragdový vzhled aplikace.',
+      description: 'Klasický tmavý smaragdový vzhled aplikace (Základní zdarma).',
       cost: 0,
       gradient: 'from-emerald-500 to-teal-600',
       borderColor: 'border-emerald-500'
@@ -20,7 +126,7 @@ export default function XPShop({ userData, onRefreshData }) {
       id: 'golden',
       name: 'Golden Instructor',
       description: 'Exkluzivní zlaté téma pro úspěšné instruktory.',
-      cost: 500,
+      cost: 1000,
       gradient: 'from-amber-500 to-yellow-400',
       borderColor: 'border-amber-500'
     },
@@ -28,7 +134,7 @@ export default function XPShop({ userData, onRefreshData }) {
       id: 'cyan',
       name: 'Cyber Neon Cyan',
       description: 'Moderní azurové neonové téma s tmavomodrým pozadím.',
-      cost: 800,
+      cost: 2000,
       gradient: 'from-cyan-500 to-blue-500',
       borderColor: 'border-cyan-500'
     },
@@ -36,84 +142,29 @@ export default function XPShop({ userData, onRefreshData }) {
       id: 'purple',
       name: 'Deep Space Purple',
       description: 'Temné noční fialové téma s hvězdným třpytem.',
-      cost: 1200,
+      cost: 3500,
       gradient: 'from-purple-600 to-indigo-500',
       borderColor: 'border-purple-500'
+    },
+    {
+      id: 'crimson',
+      name: 'Crimson Titan',
+      description: 'Vášnivé rubínově červené téma plné energie a síly.',
+      cost: 5000,
+      gradient: 'from-red-600 to-orange-500',
+      borderColor: 'border-red-500'
+    },
+    {
+      id: 'midnight',
+      name: 'Midnight OLED',
+      description: 'Čistě černé noční téma s neonově limetkovými prvky.',
+      cost: 7500,
+      gradient: 'from-lime-400 to-emerald-500',
+      borderColor: 'border-lime-500'
     }
   ];
 
-  const badges = [
-    {
-      id: 'b-streak-3',
-      name: 'Stálý Student',
-      description: 'Udržuj denní sérii alespoň 3 dny v řadě.',
-      icon: Flame,
-      color: 'text-amber-400',
-      req: (data) => data.streak >= 3
-    },
-    {
-      id: 'b-xp-500',
-      name: 'XP Sběratel',
-      description: 'Získej celkově alespoň 500 XP bodů.',
-      icon: Star,
-      color: 'text-yellow-400',
-      req: (data) => data.xp >= 500
-    },
-    {
-      id: 'b-rotator',
-      name: 'Mistr Rotátorové Manžety',
-      description: 'Zvládnuty svaly supraspinatus, infraspinatus, teres minor a subscapularis.',
-      icon: Shield,
-      color: 'text-emerald-400',
-      req: (data) => {
-        const rm = ['supraspinatus', 'infraspinatus', 'teres-minor', 'subscapularis'];
-        return rm.every(id => data.masteredMuscles?.[id]?.score >= 80);
-      }
-    },
-    {
-      id: 'b-exam-100',
-      name: 'Jedničkář A1–A21',
-      description: 'Získej 100 % v ostrém zkouškovém testu.',
-      icon: Award,
-      color: 'text-cyan-400',
-      req: (data) => data.examHistory?.some(h => h.percent === 100)
-    },
-    {
-      id: 'b-marathon',
-      name: 'Svalový Maratonist',
-      description: 'Zodpovězeno alespoň 20 anatomických otázek.',
-      icon: Dumbbell,
-      color: 'text-rose-400',
-      req: (data) => Object.values(data.masteredMuscles || {}).reduce((acc, m) => acc + (m.total || 0), 0) >= 20
-    },
-    {
-      id: 'b-cervical',
-      name: 'Mistr Šíje a Krku',
-      description: 'Zvládnuty svaly mm. suboccipitales, scaleni a SCM.',
-      icon: Activity,
-      color: 'text-purple-400',
-      req: (data) => {
-        const neck = ['rectus-capitis-posterior-minor', 'scalenus-anterior', 'sternocleidomastoideus'];
-        return neck.every(id => data.masteredMuscles?.[id]?.score >= 80);
-      }
-    },
-    {
-      id: 'b-exam-done',
-      name: 'Zkouškový Bojovník',
-      description: 'Dokonči alespoň 1 kompletní test A1–A21.',
-      icon: Trophy,
-      color: 'text-amber-500',
-      req: (data) => data.examHistory?.length > 0
-    },
-    {
-      id: 'b-typer-pro',
-      name: 'Mistr Klávesnice',
-      description: 'Správně zodpovězeny ruční vypisovací otázky v lekcích.',
-      icon: Keyboard,
-      color: 'text-teal-400',
-      req: (data) => data.xp >= 300
-    }
-  ];
+  const badges = BADGES_LIST;
 
   const handleBuyTheme = (t) => {
     if (userData.unlockedThemes?.includes(t.id)) {

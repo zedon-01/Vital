@@ -7,13 +7,14 @@ import MuscleAtlas from './components/MuscleAtlas';
 import MatchingGame from './components/MatchingGame';
 import ExamMode from './components/ExamMode';
 import WeakSpots from './components/WeakSpots';
-import XPShop from './components/XPShop';
+import XPShop, { BADGES_LIST } from './components/XPShop';
 import PersonalStats from './components/PersonalStats';
 import FinalChecklist from './components/FinalChecklist';
 import StudySessionModal from './components/StudySessionModal';
 import SingleMuscleDrillModal from './components/SingleMuscleDrillModal';
+import BadgeUnlockModal from './components/BadgeUnlockModal';
 
-import { loadUserData } from './utils/storageManager';
+import { loadUserData, unlockBadge } from './utils/storageManager';
 import { generateModuleQuestions, generateWeakTopicsSession } from './utils/questionGenerator';
 
 export default function App() {
@@ -26,13 +27,37 @@ export default function App() {
   // Single muscle drill modal state
   const [selectedMuscleForDrill, setSelectedMuscleForDrill] = useState(null);
 
+  // Automatic badge celebration modal state
+  const [unlockedBadgeCelebration, setUnlockedBadgeCelebration] = useState(null);
+
   // Dynamic Theme Switcher Effect
   useEffect(() => {
     document.body.className = `theme-${userData.activeTheme || 'emerald'}`;
   }, [userData.activeTheme]);
 
+  // Check for newly earned badges and trigger celebration modal automatically
+  const checkAndTriggerBadgeUnlocks = (currentData) => {
+    const data = currentData || loadUserData();
+    if (!data || !data.unlockedBadges) return;
+
+    for (const badge of BADGES_LIST) {
+      if (!data.unlockedBadges.includes(badge.id) && badge.req(data)) {
+        const updated = unlockBadge(badge.id, 50);
+        setUserData(updated);
+        setUnlockedBadgeCelebration(badge);
+        break; // Trigger one celebration modal at a time
+      }
+    }
+  };
+
+  useEffect(() => {
+    checkAndTriggerBadgeUnlocks(userData);
+  }, []);
+
   const refreshUserData = () => {
-    setUserData(loadUserData());
+    const updated = loadUserData();
+    setUserData(updated);
+    checkAndTriggerBadgeUnlocks(updated);
   };
 
   const handleStartSession = (moduleId) => {
@@ -168,6 +193,14 @@ export default function App() {
           muscle={selectedMuscleForDrill}
           onClose={() => setSelectedMuscleForDrill(null)}
           onRefreshData={refreshUserData}
+        />
+      )}
+
+      {/* Automatic Badge Unlock Celebration Modal */}
+      {unlockedBadgeCelebration && (
+        <BadgeUnlockModal
+          badge={unlockedBadgeCelebration}
+          onClose={() => setUnlockedBadgeCelebration(null)}
         />
       )}
 

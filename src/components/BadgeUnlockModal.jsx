@@ -36,7 +36,7 @@ export default function BadgeUnlockModal({ badge, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="w-full max-w-md glass-panel border border-amber-500/50 bg-slate-900/95 p-8 text-center rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-300">
+      <div className="w-full max-w-sm glass-panel border border-amber-500/50 bg-slate-900/95 p-6 rounded-3xl shadow-2xl relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col items-center text-center">
         
         {/* Glowing Background Glow Radial */}
         <div className="absolute -top-12 -left-12 w-48 h-48 bg-amber-500/20 rounded-full blur-3xl pointer-events-none"></div>
@@ -45,47 +45,44 @@ export default function BadgeUnlockModal({ badge, onClose }) {
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors"
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-xl hover:bg-slate-800 transition-colors z-20"
         >
           <X size={20} />
         </button>
 
-        {/* Animated Badge Icon Shield */}
-        <div className="relative mb-6">
-          <div className="w-24 h-24 mx-auto bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-600 rounded-3xl p-0.5 shadow-2xl shadow-amber-500/40 animate-pulse">
-            <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center text-amber-400">
-              <Icon size={48} className="pulse-element" />
-            </div>
-          </div>
-          <div className="absolute -bottom-2 right-1/3 bg-amber-500 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-full uppercase tracking-widest shadow-md">
-            UNLOCKED!
+        {/* Badge Icon Shield */}
+        <div className="w-20 h-20 bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-600 rounded-3xl p-0.5 shadow-xl shadow-amber-500/30 mb-4 mt-2 flex items-center justify-center shrink-0">
+          <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center text-amber-400">
+            <Icon size={40} />
           </div>
         </div>
 
-        {/* Badge Title & Subtitle */}
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-extrabold mb-2">
+        {/* Header Tag */}
+        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-400 text-xs font-extrabold mb-3">
           <Sparkles size={14} />
           <span>NOVÝ ODZNAK ODEMČEN!</span>
         </div>
 
-        <h2 className="text-2xl font-black text-white mb-2 tracking-tight">
+        {/* Badge Title */}
+        <h2 className="text-xl font-black text-white mb-2 tracking-tight">
           {badge.name}
         </h2>
 
-        <p className="text-xs text-slate-300 leading-relaxed max-w-xs mx-auto mb-6">
+        {/* Badge Description */}
+        <p className="text-xs text-slate-300 leading-relaxed max-w-xs mb-5 px-2">
           {badge.description}
         </p>
 
         {/* XP Bonus Toast */}
-        <div className="p-3 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-300 font-extrabold text-sm mb-6 flex items-center justify-center gap-2">
-          <Star size={18} className="text-emerald-400 fill-emerald-400" />
+        <div className="w-full p-2.5 bg-emerald-500/15 border border-emerald-500/30 rounded-xl text-emerald-300 font-extrabold text-xs mb-5 flex items-center justify-center gap-2">
+          <Star size={16} className="text-emerald-400 fill-emerald-400" />
           <span>+50 BONUS XP PŘIPSÁNO!</span>
         </div>
 
         {/* Confirm Button */}
         <button
           onClick={onClose}
-          className="btn btn-primary w-full py-3.5 text-base font-extrabold shadow-lg shadow-amber-500/25"
+          className="btn btn-primary w-full py-3 text-sm font-extrabold shadow-lg shadow-amber-500/25"
         >
           <span>Skvělé! Pokračovat</span>
         </button>
